@@ -140,6 +140,8 @@ Everything is under `/api`. Errors always look like this:
 
 `PATCH /api/movies/:id` updates a movie. Send only the fields you want to change. If you send `prerequisiteIds` it replaces the whole list. Returns 409 if the new list would create a loop.
 
+`DELETE /api/movies/:id` deletes a movie and returns 204. If other movies had it as a prerequisite, it's removed from their lists too.
+
 `GET /api/movies/:id/rewatch-order` returns what to watch before that movie:
 
 ```json
@@ -167,6 +169,8 @@ Everything is under `/api`. Errors always look like this:
 ```
 
 `GET /api/cinemas` returns all cinemas with their bundle sizes.
+
+`DELETE /api/cinemas/:id` deletes a cinema (and its bundle sizes) and returns 204.
 
 `GET /api/cinemas/:id/booking?groupSize=44` returns the cheapest way to book, meaning the fewest bundles:
 
@@ -234,7 +238,7 @@ The assessment left some things open, so these are the choices I made:
 - Bundle sizes for a cinema must all be different (the assessment says "different bundle sizes"), each 1 to 500, with at most 10 per cinema.
 - Group size must be a whole number from 1 to 10,000.
 - A booking that isn't possible returns 200 with `possible: false`, because the request itself was fine.
-- There's no delete for movies or cinemas since it wasn't asked for.
+- Deleting a movie that others depend on is allowed. It just gets removed from their prerequisite lists, and the frontend tells you which movies will be affected before you confirm.
 - Runtimes in the sample data are approximate.
 - Posters for the sample movies come from TMDB. If an image can't load (no internet, for example) the frontend shows a coloured placeholder with the movie's initials instead.
 

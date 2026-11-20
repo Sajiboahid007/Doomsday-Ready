@@ -30,6 +30,10 @@ export function updateMovie(id, changes) {
   return request(`/movies/${id}`, { method: "PATCH", body: JSON.stringify(changes) });
 }
 
+export function deleteMovie(id) {
+  return request(`/movies/${id}`, { method: "DELETE" });
+}
+
 export function getRewatchOrder(id) {
   return request(`/movies/${id}/rewatch-order`);
 }
@@ -40,6 +44,10 @@ export function getCinemas() {
 
 export function createCinema(cinema) {
   return request("/cinemas", { method: "POST", body: JSON.stringify(cinema) });
+}
+
+export function deleteCinema(id) {
+  return request(`/cinemas/${id}`, { method: "DELETE" });
 }
 
 export function getBookingQuote(cinemaId, groupSize) {

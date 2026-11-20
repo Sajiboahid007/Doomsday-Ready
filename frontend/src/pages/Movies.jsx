@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getMovies, createMovie, updateMovie } from "../api/client.js";
+import { getMovies, createMovie, updateMovie, deleteMovie } from "../api/client.js";
 import Poster from "../components/Poster.jsx";
 
 const emptyForm = {
@@ -40,6 +40,7 @@ export default function Movies() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -63,6 +64,12 @@ export default function Movies() {
     loadMovies();
   }, []);
 
+  function closeForm() {
+    setShowForm(false);
+    setForm(emptyForm);
+    setFormError("");
+  }
+
   async function handleAdd(e) {
     e.preventDefault();
     setFormError("");
@@ -76,7 +83,7 @@ export default function Movies() {
         watched: form.watched,
         prerequisiteIds: form.prerequisiteIds,
       });
-      setForm(emptyForm);
+      closeForm();
       await loadMovies();
     } catch (err) {
       setFormError(err.message);
@@ -88,6 +95,25 @@ export default function Movies() {
   async function toggleWatched(movie) {
     try {
       await updateMovie(movie.id, { watched: !movie.watched });
+      await loadMovies();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDelete(movie) {
+    const dependents = movies.filter((m) => m.prerequisites.some((p) => p.id === movie.id));
+    let question = `Delete "${movie.title}"?`;
+    if (dependents.length > 0) {
+      question += `\n\nIt will also be removed from the prerequisites of: ${dependents
+        .map((m) => m.title)
+        .join(", ")}.`;
+    }
+    if (!window.confirm(question)) return;
+
+    try {
+      await deleteMovie(movie.id);
+      if (editingId === movie.id) setEditingId(null);
       await loadMovies();
     } catch (err) {
       setError(err.message);
@@ -115,11 +141,90 @@ export default function Movies() {
 
   return (
     <div>
+      {showForm && (
+        <section className="card">
+          <h2>Add a movie</h2>
+          <form onSubmit={handleAdd}>
+            <div className="fields">
+              <label>
+                Title
+                <input
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  required
+                  autoFocus
+                />
+              </label>
+              <label>
+                Release year
+                <input
+                  type="number"
+                  min="1900"
+                  max="2100"
+                  value={form.releaseYear}
+                  onChange={(e) => setForm({ ...form, releaseYear: e.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Runtime (minutes)
+                <input
+                  type="number"
+                  min="1"
+                  max="300"
+                  value={form.runtimeMinutes}
+                  onChange={(e) => setForm({ ...form, runtimeMinutes: e.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Poster image URL (optional)
+                <input
+                  type="url"
+                  value={form.posterUrl}
+                  onChange={(e) => setForm({ ...form, posterUrl: e.target.value })}
+                  placeholder="https://..."
+                />
+              </label>
+            </div>
+
+            <label className="inline">
+              <input
+                type="checkbox"
+                checked={form.watched}
+                onChange={(e) => setForm({ ...form, watched: e.target.checked })}
+              />
+              Already watched
+            </label>
+
+            <p className="label">Movies to watch before this one</p>
+            <PrerequisitePicker
+              movies={movies}
+              selected={form.prerequisiteIds}
+              onChange={(ids) => setForm({ ...form, prerequisiteIds: ids })}
+            />
+
+            {formError && <p className="error">{formError}</p>}
+            <div className="row">
+              <button type="submit" disabled={saving}>
+                {saving ? "Saving..." : "Save movie"}
+              </button>
+              <button type="button" className="secondary" onClick={closeForm}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
       <section className="card">
-        <h2>All movies</h2>
+        <div className="card-header">
+          <h2>All movies</h2>
+          {!showForm && <button onClick={() => setShowForm(true)}>+ Add movie</button>}
+        </div>
         {error && <p className="error">{error}</p>}
         {movies.length === 0 ? (
-          <p className="muted">No movies yet. Add one below.</p>
+          <p className="muted">No movies yet. Click "Add movie" to add one.</p>
         ) : (
           <div className="movie-grid">
             {movies.map((movie) => (
@@ -170,9 +275,14 @@ export default function Movies() {
                       ) : (
                         <p className="muted small">Nothing, start here</p>
                       )}
-                      <button className="secondary small-btn" onClick={() => startEditing(movie)}>
-                        Edit prerequisites
-                      </button>
+                      <div className="card-actions">
+                        <button className="secondary small-btn" onClick={() => startEditing(movie)}>
+                          Edit prerequisites
+                        </button>
+                        <button className="danger small-btn" onClick={() => handleDelete(movie)}>
+                          Delete
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -180,74 +290,6 @@ export default function Movies() {
             ))}
           </div>
         )}
-      </section>
-
-      <section className="card">
-        <h2>Add a movie</h2>
-        <form onSubmit={handleAdd}>
-          <div className="fields">
-            <label>
-              Title
-              <input
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Release year
-              <input
-                type="number"
-                min="1900"
-                max="2100"
-                value={form.releaseYear}
-                onChange={(e) => setForm({ ...form, releaseYear: e.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Runtime (minutes)
-              <input
-                type="number"
-                min="1"
-                max="300"
-                value={form.runtimeMinutes}
-                onChange={(e) => setForm({ ...form, runtimeMinutes: e.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Poster image URL (optional)
-              <input
-                type="url"
-                value={form.posterUrl}
-                onChange={(e) => setForm({ ...form, posterUrl: e.target.value })}
-                placeholder="https://..."
-              />
-            </label>
-          </div>
-
-          <label className="inline">
-            <input
-              type="checkbox"
-              checked={form.watched}
-              onChange={(e) => setForm({ ...form, watched: e.target.checked })}
-            />
-            Already watched
-          </label>
-
-          <p className="label">Movies to watch before this one</p>
-          <PrerequisitePicker
-            movies={movies}
-            selected={form.prerequisiteIds}
-            onChange={(ids) => setForm({ ...form, prerequisiteIds: ids })}
-          />
-
-          {formError && <p className="error">{formError}</p>}
-          <button type="submit" disabled={saving}>
-            {saving ? "Saving..." : "Add movie"}
-          </button>
-        </form>
       </section>
     </div>
   );

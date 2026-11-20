@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCinemas, createCinema, getBookingQuote } from "../api/client.js";
+import { getCinemas, createCinema, deleteCinema, getBookingQuote } from "../api/client.js";
 
 export default function Booking() {
   const [cinemas, setCinemas] = useState([]);
@@ -18,7 +18,21 @@ export default function Booking() {
     try {
       const list = await getCinemas();
       setCinemas(list);
-      if (!cinemaId && list.length > 0) setCinemaId(String(list[0].id));
+      // Keep the selected cinema if it still exists, otherwise pick the first one.
+      setCinemaId((current) =>
+        list.some((c) => String(c.id) === current) ? current : list.length > 0 ? String(list[0].id) : ""
+      );
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDelete(cinema) {
+    if (!window.confirm(`Delete "${cinema.name}"?`)) return;
+    try {
+      await deleteCinema(cinema.id);
+      if (String(cinema.id) === cinemaId) setQuote(null);
+      await loadCinemas();
     } catch (err) {
       setError(err.message);
     }
@@ -117,7 +131,11 @@ export default function Booking() {
           </div>
         )}
 
-        {quote && !quote.possible && <div className="result fail">{quote.message}</div>}
+        {quote && !quote.possible && (
+          <div className="result fail">
+            <strong>Not possible.</strong> {quote.message}
+          </div>
+        )}
       </section>
 
       <section className="card">
@@ -127,6 +145,7 @@ export default function Booking() {
             <tr>
               <th>Name</th>
               <th>Bundle sizes</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -134,6 +153,11 @@ export default function Booking() {
               <tr key={c.id}>
                 <td>{c.name}</td>
                 <td>{c.bundleSizes.join(", ")}</td>
+                <td className="actions-cell">
+                  <button className="danger small-btn" onClick={() => handleDelete(c)}>
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

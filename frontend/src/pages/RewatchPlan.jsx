@@ -87,6 +87,20 @@ export default function RewatchPlan() {
             </div>
           </div>
 
+          {plan.totalCount > 0 && (
+            <div className="progress">
+              <div className="progress-bar">
+                <div
+                  className="progress-fill"
+                  style={{ width: `${(plan.watchedCount / plan.totalCount) * 100}%` }}
+                />
+              </div>
+              <span className="progress-text">
+                {plan.watchedCount} of {plan.totalCount} watched
+              </span>
+            </div>
+          )}
+
           {plan.movies.length === 0 ? (
             <p className="muted">Nothing to watch first. You can go straight to {plan.target.title}.</p>
           ) : (

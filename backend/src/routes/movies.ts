@@ -261,6 +261,32 @@ router.patch("/:id", async (req: Request, res: Response) => {
   }
 });
 
+router.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    const movieId = Number(req.params.id);
+    if (!Number.isInteger(movieId)) {
+      return sendError(res, 400, "VALIDATION_ERROR", "Invalid movie id.");
+    }
+
+    const movie = await prisma.movies.findUnique({ where: { id: movieId } });
+    if (!movie) {
+      return sendError(res, 404, "NOT_FOUND", "Movie not found.");
+    }
+
+    // Remove this movie from other movies' prerequisite lists, then delete it.
+    // Its own prerequisite rows are removed by the cascade on movieId.
+    await prisma.$transaction([
+      prisma.moviePrerequisites.deleteMany({ where: { prerequisiteId: movieId } }),
+      prisma.movies.delete({ where: { id: movieId } }),
+    ]);
+
+    res.status(204).end();
+  } catch (err) {
+    console.error("DELETE /movies/:id failed:", err);
+    sendError(res, 500, "INTERNAL_ERROR", "Could not delete the movie.");
+  }
+});
+
 router.get("/:id/rewatch-order", async (req: Request, res: Response) => {
   try {
     const movieId = Number(req.params.id);

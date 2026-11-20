@@ -74,6 +74,27 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
+router.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    const cinemaId = Number(req.params.id);
+    if (!Number.isInteger(cinemaId)) {
+      return sendError(res, 400, "VALIDATION_ERROR", "Invalid cinema id.");
+    }
+
+    const cinema = await prisma.cinemas.findUnique({ where: { id: cinemaId } });
+    if (!cinema) {
+      return sendError(res, 404, "NOT_FOUND", "Cinema not found.");
+    }
+
+    // Bundle sizes are removed by the cascade on cinemaId.
+    await prisma.cinemas.delete({ where: { id: cinemaId } });
+    res.status(204).end();
+  } catch (err) {
+    console.error("DELETE /cinemas/:id failed:", err);
+    sendError(res, 500, "INTERNAL_ERROR", "Could not delete the cinema.");
+  }
+});
+
 router.get("/:id/booking", async (req: Request, res: Response) => {
   try {
     const cinemaId = Number(req.params.id);
