@@ -34,6 +34,16 @@ On an Apple Silicon Mac, turn on "Use Rosetta for x86/amd64 emulation" in Docker
 
 To stop it: `docker compose down`. Add `-v` if you also want to delete the database.
 
+#### If something goes wrong
+
+| Problem | Cause | Fix |
+| --- | --- | --- |
+| "port is already allocated" | port 1433, 4000 or 5173 is already in use, e.g. by a local SQL Server | set `DB_PORT=1434` in `.env`, or stop whatever is using the port |
+| database container keeps restarting | Docker has less than 2 GB of RAM | Docker Desktop → Settings → Resources, and raise the memory |
+| first start is very slow | the first download is about 1.5 GB | just wait, later starts are fast |
+| posters show initials instead of images | the browser has no internet | that's expected, it's the fallback poster |
+| won't start on a Mac | Rosetta is turned off | turn on "Use Rosetta for x86/amd64 emulation" in Docker Desktop |
+
 ### Without Docker
 
 You need Node 20+ and a local SQL Server.
