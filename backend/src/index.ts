@@ -1,46 +1,45 @@
-import express, { Request, Response } from "express";
+import "dotenv/config";
+import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-import prisma from "./lib/prisma.js";
-
-dotenv.config();
+import moviesRouter from "./routes/movies.js";
+import cinemasRouter from "./routes/cinemas.js";
+import { sendError } from "./lib/errors.js";
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
 
-// Health check endpoint
-app.get("/health", (req: Request, res: Response) => {
-  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+app.get("/api/health", (req: Request, res: Response) => {
+  res.json({ status: "ok" });
 });
 
-// Sample route using Prisma
-app.get("/users", async (req: Request, res: Response) => {
-  try {
-    const users = await prisma.user.findMany();
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch users", details: error instanceof Error ? error.message : error });
+app.use("/api/movies", moviesRouter);
+app.use("/api/cinemas", cinemasRouter);
+
+app.use((req: Request, res: Response) => {
+  sendError(res, 404, "NOT_FOUND", `Cannot ${req.method} ${req.path}`);
+});
+
+// Catches broken JSON bodies and anything else that slips through the routes.
+app.use((err: Error & { type?: string }, req: Request, res: Response, next: NextFunction) => {
+  if (err.type === "entity.parse.failed") {
+    return sendError(res, 400, "VALIDATION_ERROR", "Request body is not valid JSON.");
   }
+  console.error(err);
+  sendError(res, 500, "INTERNAL_ERROR", "Something went wrong.");
 });
 
-app.post("/users", async (req: Request, res: Response) => {
-  try {
-    const { email, name } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
-    }
-    const user = await prisma.user.create({
-      data: { email, name },
-    });
-    res.status(201).json(user);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create user", details: error instanceof Error ? error.message : error });
+const server = app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`Port ${PORT} is already in use. Stop the other server or set a different PORT in .env.`);
+  } else {
+    console.error(err);
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  process.exit(1);
 });

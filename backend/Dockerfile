@@ -1,51 +1,28 @@
-# Multi-stage Dockerfile for Node.js + TypeScript + Prisma
-FROM node:20-alpine AS builder
-
+FROM node:20-alpine AS build
 WORKDIR /app
-
-# Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
 
-# Copy package files
 COPY package*.json ./
-COPY prisma ./prisma/
-
-# Install all dependencies (including devDependencies)
+COPY prisma ./prisma
 RUN npm ci
 
-# Generate Prisma Client
-RUN npx prisma generate
-
-# Copy source code and config
 COPY tsconfig.json ./
 COPY src ./src
-
-# Build TypeScript code
 RUN npm run build
 
-# Stage 2: Production
-FROM node:20-alpine AS runner
 
+FROM node:20-alpine
 WORKDIR /app
-
 RUN apk add --no-cache openssl
-
 ENV NODE_ENV=production
-ENV PORT=5000
 
-# Copy package files
 COPY package*.json ./
-COPY prisma ./prisma/
+COPY prisma ./prisma
+RUN npm ci --omit=dev && npx prisma generate
 
-# Install only production dependencies
-RUN npm ci --omit=dev
+COPY --from=build /app/dist ./dist
 
-# Generate Prisma Client for the production node_modules
-RUN npx prisma generate
+EXPOSE 4000
 
-# Copy built artifacts from builder stage
-COPY --from=builder /app/dist ./dist
-
-EXPOSE 5000
-
-CMD ["npm", "start"]
+# Create/update the tables, seed sample data on first run, then start the API.
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/seed.js && node dist/index.js"]
