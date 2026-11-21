@@ -266,4 +266,11 @@ There are also a few extra ones: every movie comes after its prerequisites, the 
 
 ## AI usage
 
-<!-- Fill this in yourself: which tools you used and for what. -->
+I used Claude (an AI assistant) for a few things:
+
+- Writing and tidying up this README.
+- Generating the seed data (the sample movies, runtimes, poster links and cinemas).
+- Fixing errors when a few things weren't working.
+- Reviewing the project before submission to check everything was correct and working.
+
+The design, the database schema and the three algorithms (cycle check, rewatch order, booking quote) are my own work.
